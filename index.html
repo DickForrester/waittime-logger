@@ -451,7 +451,7 @@ async function loadDashboard(){
     const resp=await fetch(SCRIPT_URL+'?action=getData');
     const json=await resp.json();
     if(json.status==='success'){
-      allDashData=json.data.filter(r=>r.attraction&&r.actualWait!==''&&r.postedWait!==''&&r.postedWait!==0);
+      allDashData=json.data.filter(r=>r.attraction&&r.actualWait!==''&&r.actualWait!==null&&r.postedWait!==''&&r.postedWait!==null&&Number(r.postedWait)>0);
       renderDashboard();
     }else{
       document.getElementById('dash-rides').innerHTML='<div class="dash-empty">Could not load data from sheet.</div>';
