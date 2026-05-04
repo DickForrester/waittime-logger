@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Wait Time Logger — Dickinson @ Universal</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@500&display=swap');
+  :root {
+    --bg:#0f1117;--surface:#1a1d27;--surface2:#22263a;
+    --border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.15);
+    --text:#f0f0f5;--muted:#8a8fa8;--accent:#4f9cf9;--accent2:#f9934f;
+    --success:#4fcf8a;--danger:#f94f4f;
+    --font:'DM Sans',sans-serif;--mono:'DM Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+  .header{background:var(--surface);border-bottom:1px solid var(--border);padding:16px 20px 14px;position:sticky;top:0;z-index:100}
+  .header-top{display:flex;align-items:center;justify-content:space-between}
+  .logo{font-size:13px;font-weight:600;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+  .logo span{color:var(--accent)}
+  .clock{font-family:var(--mono);font-size:14px;color:var(--muted);background:var(--bg);padding:4px 10px;border-radius:6px;border:1px solid var(--border)}
+  .tabs{display:flex;gap:4px;margin-top:12px}
+  .tab{flex:1;padding:8px;border:none;border-radius:8px;font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;background:transparent;color:var(--muted);transition:all .15s}
+  .tab.active{background:var(--accent);color:#fff}
+  .page{display:none;padding:20px}
+  .page.active{display:block}
+  .timer-idle{text-align:center;padding:32px 0 20px}
+  .timer-idle h2{font-size:22px;font-weight:600;margin-bottom:8px}
+  .timer-idle p{color:var(--muted);font-size:15px;line-height:1.5}
+  .big-btn{width:100%;padding:20px;border:none;border-radius:16px;font-family:var(--font);font-size:18px;font-weight:600;cursor:pointer;transition:all .15s;margin-top:8px}
+  .big-btn:active{transform:scale(.97)}
+  .btn-start{background:var(--accent);color:#fff}
+  .btn-board{background:var(--success);color:#0f1117}
+  .btn-cancel{background:var(--surface2);color:var(--muted);font-size:15px;padding:14px;margin-top:4px}
+  .timer-running{display:none;text-align:center;padding:24px 0 16px}
+  .timer-running.visible{display:block}
+  .ride-badge{display:inline-block;background:var(--surface2);border:1px solid var(--border2);border-radius:20px;padding:6px 14px;font-size:13px;color:var(--muted);margin-bottom:20px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .ride-badge strong{color:var(--text)}
+  .elapsed-display{font-family:var(--mono);font-size:64px;font-weight:500;color:var(--accent);line-height:1;margin-bottom:8px;letter-spacing:-2px}
+  .elapsed-label{font-size:13px;color:var(--muted);margin-bottom:28px;letter-spacing:.05em;text-transform:uppercase}
+  .posted-badge{display:inline-flex;align-items:center;gap:8px;background:var(--surface2);border-radius:10px;padding:10px 16px;margin-bottom:28px}
+  .posted-badge .label{font-size:12px;color:var(--muted)}
+  .posted-badge .value{font-family:var(--mono);font-size:18px;color:var(--accent2);font-weight:500}
+  .field{margin-bottom:16px}
+  .field label{display:block;font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px}
+  .field select,.field input[type=text],.field input[type=number],.field textarea{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;font-family:var(--font);font-size:16px;color:var(--text);outline:none;appearance:none;-webkit-appearance:none;transition:border-color .15s}
+  .field select:focus,.field input:focus,.field textarea:focus{border-color:var(--accent)}
+  .field textarea{resize:none;height:80px;line-height:1.5}
+  .field select option{background:#1a1d27}
+  .field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .obs-toggle{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .obs-btn{padding:12px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-family:var(--font);font-size:14px;font-weight:500;cursor:pointer;transition:all .15s;text-align:center}
+  .obs-btn.selected{border-color:var(--accent);color:var(--accent);background:rgba(79,156,249,.1)}
+  .section-head{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin:24px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+  .success-screen{display:none;text-align:center;padding:48px 20px}
+  .success-screen.visible{display:block}
+  .success-icon{width:72px;height:72px;border-radius:50%;background:rgba(79,207,138,.15);border:2px solid var(--success);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:32px}
+  .success-screen h2{font-size:22px;margin-bottom:8px}
+  .success-screen p{color:var(--muted);font-size:15px;margin-bottom:28px;line-height:1.5}
+  .ratio-display{background:var(--surface2);border-radius:12px;padding:16px;margin-bottom:24px;display:flex;justify-content:space-around}
+  .ratio-item{text-align:center}
+  .ratio-item .r-val{font-family:var(--mono);font-size:24px;font-weight:500}
+  .ratio-item .r-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-top:2px}
+  .r-actual{color:var(--success)}.r-posted{color:var(--accent2)}.r-ratio{color:var(--accent)}
+  .btn-new{background:var(--accent);color:#fff;width:100%;padding:18px;border:none;border-radius:14px;font-family:var(--font);font-size:17px;font-weight:600;cursor:pointer}
+  .manual-note{background:rgba(249,147,79,.1);border:1px solid rgba(249,147,79,.3);border-radius:10px;padding:12px 14px;font-size:13px;color:var(--accent2);margin-bottom:20px;line-height:1.5}
+  .dash-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+  .dash-header h2{font-size:18px}
+  .refresh-btn{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 14px;font-family:var(--font);font-size:13px;color:var(--muted);cursor:pointer}
+  .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px}
+  .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px}
+  .stat-card .s-val{font-family:var(--mono);font-size:28px;font-weight:500;color:var(--accent);line-height:1}
+  .stat-card .s-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-top:4px}
+  .ride-row{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between}
+  .rr-name{font-size:14px;font-weight:500;margin-bottom:2px;max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .rr-park{font-size:11px;color:var(--muted)}
+  .rr-stats{text-align:right;flex-shrink:0}
+  .rr-ratio{font-family:var(--mono);font-size:16px;font-weight:500}
+  .rr-count{font-size:11px;color:var(--muted);margin-top:2px}
+  .ratio-good{color:var(--success)}.ratio-mid{color:var(--accent2)}.ratio-high{color:var(--danger)}
+  .park-filter{display:flex;gap:6px;margin-bottom:14px;overflow-x:auto;padding-bottom:4px}
+  .park-pill{flex-shrink:0;padding:6px 12px;border-radius:20px;border:1px solid var(--border);background:var(--surface2);font-family:var(--font);font-size:12px;color:var(--muted);cursor:pointer;white-space:nowrap}
+  .park-pill.active{background:var(--accent);border-color:var(--accent);color:#fff}
+  .loading-dash{text-align:center;padding:40px;color:var(--muted);font-size:14px}
+  .error-msg{background:rgba(249,79,79,.1);border:1px solid rgba(249,79,79,.3);border-radius:10px;padding:12px 14px;font-size:13px;color:var(--danger);margin-bottom:16px;display:none}
+  .submit-btn{width:100%;padding:18px;background:var(--success);color:#0f1117;border:none;border-radius:14px;font-family:var(--font);font-size:17px;font-weight:600;cursor:pointer;margin-top:8px;transition:all .15s}
+  .submit-btn:active{transform:scale(.97)}
+  .submit-btn:disabled{opacity:.5;cursor:not-allowed}
+  .pending-indicator{display:none;align-items:center;gap:8px;background:rgba(79,156,249,.1);border:1px solid rgba(79,156,249,.25);border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:var(--accent)}
+  .pending-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);animation:pulse 1.5s infinite;flex-shrink:0}
+  .dash-empty{text-align:center;padding:32px 20px;color:var(--muted);font-size:14px;line-height:1.6}
+  .sort-row{display:flex;gap:6px}
+  .sort-btn{padding:5px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);font-family:var(--font);font-size:11px;color:var(--muted);cursor:pointer}
+  .sort-btn.active{border-color:var(--accent);color:var(--accent)}
+  .spinner{display:inline-block;width:14px;height:14px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+  @keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <div class="logo">Dickinson <span>@ Universal</span></div>
+    <div class="clock" id="clock">--:--</div>
+  </div>
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('log',this)">Log Wait</button>
+    <button class="tab" onclick="switchTab('manual',this)">Manual</button>
+    <button class="tab" onclick="switchTab('dash',this)">Dashboard</button>
+  </div>
+</div>
+
+<!-- LOG WAIT -->
+<div class="page active" id="page-log">
+  <div id="log-idle">
+    <div class="timer-idle">
+      <h2>Ready to queue?</h2>
+      <p>Fill in the details below, then tap Start Wait when you join the line.</p>
+    </div>
+    <div id="pending-banner" class="pending-indicator">
+      <div class="pending-dot"></div>
+      <span>Timer running for <strong id="pending-ride-name"></strong></span>
+    </div>
+    <div class="section-head">Who &amp; Where</div>
+    <div class="field">
+      <label>Your Name</label>
+      <select id="name-select">
+        <option value="">— select name —</option>
+        <option>Trini</option><option>Quan</option><option>Sophia</option>
+        <option>Claire</option><option>Norah</option><option>Daria</option>
+        <option>Carter</option><option>Kevin</option><option>Dick</option><option>Barry</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Park</label>
+      <select id="park-select" onchange="updateAttractions('park-select','attraction-select')">
+        <option value="">— select park —</option>
+        <option value="IOA">Islands of Adventure (IOA)</option>
+        <option value="USF">Universal Studios Florida (USF)</option>
+        <option value="Epic Universe">Epic Universe</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Attraction</label>
+      <select id="attraction-select"><option value="">— select park first —</option></select>
+    </div>
+    <div class="section-head">Wait Time</div>
+    <div class="field">
+      <label>Posted Wait Time (minutes)</label>
+      <input type="number" id="posted-wait" placeholder="e.g. 45" min="0" max="300" inputmode="numeric">
+    </div>
+    <div class="field">
+      <label>Observation Type</label>
+      <div class="obs-toggle">
+        <button class="obs-btn selected" id="obs-casual" onclick="selectObs('Casual','obs-casual','obs-structured','log')">Casual</button>
+        <button class="obs-btn" id="obs-structured" onclick="selectObs('Structured','obs-casual','obs-structured','log')">Structured</button>
+      </div>
+    </div>
+    <div class="field">
+      <label>Notes (optional)</label>
+      <textarea id="notes-field" placeholder="e.g. Express Pass used, ride breakdown observed…"></textarea>
+    </div>
+    <div class="error-msg" id="log-error"></div>
+    <button class="big-btn btn-start" onclick="startWait()">Start Wait ▶</button>
+  </div>
+
+  <div class="timer-running" id="log-running">
+    <div class="ride-badge"><strong id="running-park"></strong> — <span id="running-ride"></span></div>
+    <div class="elapsed-display" id="elapsed-display">00:00</div>
+    <div class="elapsed-label">Time in queue</div>
+    <div class="posted-badge">
+      <span class="label">Posted</span>
+      <span class="value" id="running-posted">-- min</span>
+    </div>
+    <button class="big-btn btn-board" onclick="boardRide()">I'm Boarding! ✓</button>
+    <button class="big-btn btn-cancel" onclick="cancelWait()">Cancel / Discard</button>
+  </div>
+
+  <div class="success-screen" id="log-success">
+    <div class="success-icon">✓</div>
+    <h2>Logged!</h2>
+    <p id="success-msg">Your wait time has been saved.</p>
+    <div class="ratio-display" id="ratio-display"></div>
+    <button class="btn-new" onclick="resetLog()">Log Another Ride</button>
+  </div>
+</div>
+
+<!-- MANUAL ENTRY -->
+<div class="page" id="page-manual">
+  <div id="manual-form">
+    <div class="manual-note">⚠ Use this if your timer was lost or you forgot to start the app.</div>
+    <div class="field">
+      <label>Your Name</label>
+      <select id="m-name">
+        <option value="">— select name —</option>
+        <option>Trini</option><option>Quan</option><option>Sophia</option>
+        <option>Claire</option><option>Norah</option><option>Daria</option>
+        <option>Carter</option><option>Kevin</option><option>Dick</option><option>Barry</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Park</label>
+      <select id="m-park" onchange="updateAttractions('m-park','m-attraction')">
+        <option value="">— select park —</option>
+        <option value="IOA">Islands of Adventure (IOA)</option>
+        <option value="USF">Universal Studios Florida (USF)</option>
+        <option value="Epic Universe">Epic Universe</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Attraction</label>
+      <select id="m-attraction"><option value="">— select park first —</option></select>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Date</label><input type="text" id="m-date" placeholder="MM/DD/YYYY"></div>
+      <div class="field"><label>Queue Entry Time</label><input type="text" id="m-time" placeholder="2:34 PM"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Posted Wait (min)</label><input type="number" id="m-posted" placeholder="45" min="0" max="300" inputmode="numeric"></div>
+      <div class="field"><label>Actual Wait (min)</label><input type="number" id="m-actual" placeholder="38" min="0" max="300" inputmode="numeric"></div>
+    </div>
+    <div class="field">
+      <label>Observation Type</label>
+      <div class="obs-toggle">
+        <button class="obs-btn selected" id="m-obs-casual" onclick="selectObs('Casual','m-obs-casual','m-obs-structured','manual')">Casual</button>
+        <button class="obs-btn" id="m-obs-structured" onclick="selectObs('Structured','m-obs-casual','m-obs-structured','manual')">Structured</button>
+      </div>
+    </div>
+    <div class="field">
+      <label>Notes (optional)</label>
+      <textarea id="m-notes" placeholder="e.g. Express Pass used, ride breakdown…"></textarea>
+    </div>
+    <div class="error-msg" id="manual-error"></div>
+    <button class="submit-btn" id="manual-submit-btn" onclick="submitManual()">Submit Entry</button>
+  </div>
+  <div class="success-screen" id="manual-success">
+    <div class="success-icon">✓</div>
+    <h2>Entry Saved!</h2>
+    <p>Manual entry submitted successfully.</p>
+    <button class="btn-new" onclick="resetManual()">Log Another</button>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div class="page" id="page-dash">
+  <div class="dash-header">
+    <h2>Live Summary</h2>
+    <button class="refresh-btn" id="refresh-btn" onclick="loadDashboard()">↻ Refresh</button>
+  </div>
+  <div class="park-filter">
+    <button class="park-pill active" onclick="filterDash('All',this)">All Parks</button>
+    <button class="park-pill" onclick="filterDash('IOA',this)">IOA</button>
+    <button class="park-pill" onclick="filterDash('USF',this)">USF</button>
+    <button class="park-pill" onclick="filterDash('Epic Universe',this)">Epic Universe</button>
+  </div>
+  <div class="stat-grid">
+    <div class="stat-card"><div class="s-val" id="d-total">—</div><div class="s-label">Observations</div></div>
+    <div class="stat-card"><div class="s-val" id="d-ratio">—</div><div class="s-label">Avg Actual/Posted</div></div>
+    <div class="stat-card"><div class="s-val" id="d-avg-actual">—</div><div class="s-label">Avg Actual Wait</div></div>
+    <div class="stat-card"><div class="s-val" id="d-avg-posted">—</div><div class="s-label">Avg Posted Wait</div></div>
+  </div>
+  <div class="section-head" style="display:flex;justify-content:space-between;align-items:center;">
+    <span>By Attraction</span>
+    <div class="sort-row">
+      <button class="sort-btn active" id="sort-rides" onclick="sortBy('rides',this)">Most Rides</button>
+      <button class="sort-btn" id="sort-ratio" onclick="sortBy('ratio',this)">By Ratio</button>
+    </div>
+  </div>
+  <div id="dash-rides"><div class="loading-dash">Tap Refresh to load data</div></div>
+</div>
+
+<script>
+const SCRIPT_URL="https://script.google.com/macros/s/AKfycbyxj-L0DeiSFymcgpPCWnAiObW4De5Pwj6OrCwB89uV7gd3HXHKaOz-UdBuP307mjbG/exec";
+const ATTRACTIONS={
+  IOA:["The Amazing Adventures of Spider-Man","Skull Island: Reign of Kong","The High in the Sky Seuss Trolley Train Ride!","The Cat in the Hat","Harry Potter and the Forbidden Journey","Hogwarts Express (IOA to USF)","Hagrid's Magical Creatures Motorbike Adventure","Jurassic World VelociCoaster","Jurassic Park River Adventure","Pteranodon Flyers","Flight of the Hippogriff","Popeye & Bluto's Bilge-Rat Barges","Dudley Do-Right's Ripsaw Falls","Doctor Doom's Fearfall","The Incredible Hulk Coaster"],
+  USF:["Harry Potter and the Escape from Gringotts","Hogwarts Express (USF to IOA)","Transformers: The Ride-3D","Despicable Me: Minion Mayhem","MEN IN BLACK Alien Attack","E.T. Adventure","Hollywood Rip Ride Rockit","Race Through New York Starring Jimmy Fallon","Revenge of the Mummy","Fast & Furious: Supercharged","The Simpsons Ride"],
+  "Epic Universe":["Stardust Racers","Constellation Carousel","Mario Kart: Bowser's Challenge","Mine-Cart Madness","Yoshi's Adventure","Monsters Unchained: The Frankenstein Experiment","Curse of the Werewolf","Harry Potter and the Battle at the Ministry","Le Cirque Arcanus","Hiccup's Wing Gliders","Dragon Racer's Rally","Fyre Drill"]
+};
+
+let obsType={log:"Casual",manual:"Casual"};
+let timerInterval=null;
+let allDashData=[];
+let dashFilter="All";
+let dashSort="rides";
+
+function updateClock(){const n=new Date();document.getElementById('clock').textContent=n.getHours().toString().padStart(2,'0')+':'+n.getMinutes().toString().padStart(2,'0')}
+setInterval(updateClock,1000);updateClock();
+
+function switchTab(tab,el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+tab).classList.add('active');
+  el.classList.add('active');
+  if(tab==='dash')loadDashboard();
+  checkPendingBanner();
+}
+
+function updateAttractions(parkId,attrId){
+  const park=document.getElementById(parkId).value;
+  const sel=document.getElementById(attrId);
+  sel.innerHTML='<option value="">— select attraction —</option>';
+  if(park&&ATTRACTIONS[park])ATTRACTIONS[park].forEach(a=>{const o=document.createElement('option');o.value=a;o.textContent=a;sel.appendChild(o)});
+}
+
+function selectObs(type,c,s,key){
+  obsType[key]=type;
+  document.getElementById(c).classList.toggle('selected',type==='Casual');
+  document.getElementById(s).classList.toggle('selected',type==='Structured');
+}
+
+function formatTime(d){let h=d.getHours();const m=d.getMinutes().toString().padStart(2,'0');const a=h>=12?'PM':'AM';h=h%12||12;return h+':'+m+' '+a}
+function formatDate(d){return(d.getMonth()+1)+'/'+d.getDate()+'/'+d.getFullYear()}
+
+function savePending(data){localStorage.setItem('wt_pending',JSON.stringify(data))}
+function getPending(){try{return JSON.parse(localStorage.getItem('wt_pending'))}catch(e){return null}}
+function clearPending(){localStorage.removeItem('wt_pending')}
+
+function checkPendingBanner(){
+  const p=getPending();
+  const banner=document.getElementById('pending-banner');
+  const onLog=document.getElementById('page-log').classList.contains('active');
+  const idleVisible=document.getElementById('log-idle').style.display!=='none';
+  if(p&&onLog&&idleVisible){document.getElementById('pending-ride-name').textContent=p.attraction;banner.style.display='flex';}
+  else{banner.style.display='none';}
+}
+
+function startWait(){
+  const name=document.getElementById('name-select').value;
+  const park=document.getElementById('park-select').value;
+  const attraction=document.getElementById('attraction-select').value;
+  const posted=document.getElementById('posted-wait').value;
+  const err=document.getElementById('log-error');
+  if(!name||!park||!attraction||!posted){err.textContent='Please fill in all required fields before starting.';err.style.display='block';return;}
+  err.style.display='none';
+  const data={name,park,attraction,postedWait:parseInt(posted),observationType:obsType.log,notes:document.getElementById('notes-field').value,startTime:Date.now()};
+  savePending(data);
+  showRunningState(data);
+}
+
+function showRunningState(data){
+  document.getElementById('log-idle').style.display='none';
+  document.getElementById('log-success').classList.remove('visible');
+  const r=document.getElementById('log-running');
+  r.classList.add('visible');
+  document.getElementById('running-park').textContent=data.park;
+  document.getElementById('running-ride').textContent=data.attraction;
+  document.getElementById('running-posted').textContent=data.postedWait+' min';
+  if(timerInterval)clearInterval(timerInterval);
+  timerInterval=setInterval(()=>{
+    const el=Math.floor((Date.now()-data.startTime)/1000);
+    document.getElementById('elapsed-display').textContent=Math.floor(el/60).toString().padStart(2,'0')+':'+(el%60).toString().padStart(2,'0');
+  },1000);
+}
+
+async function boardRide(){
+  const pending=getPending();if(!pending)return;
+  const endTime=Date.now();
+  const actualWaitMin=Math.round((endTime-pending.startTime)/60000);
+  const startDate=new Date(pending.startTime);
+  const payload={name:pending.name,park:pending.park,attraction:pending.attraction,date:formatDate(startDate),queueEntryTime:formatTime(startDate),actualWait:actualWaitMin,postedWait:pending.postedWait,observationType:pending.observationType,notes:pending.notes||''};
+  if(timerInterval)clearInterval(timerInterval);
+  document.getElementById('log-running').classList.remove('visible');
+  clearPending();
+  await submitToSheet(payload,'log');
+}
+
+function cancelWait(){
+  if(timerInterval)clearInterval(timerInterval);
+  clearPending();
+  document.getElementById('log-running').classList.remove('visible');
+  document.getElementById('log-idle').style.display='block';
+  resetLogForm();
+}
+
+async function submitToSheet(payload,source){
+  const isLog=source==='log';
+  try{
+    await fetch(SCRIPT_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    if(isLog){
+      const ratio=payload.postedWait>0?(payload.actualWait/payload.postedWait).toFixed(2):'N/A';
+      document.getElementById('ratio-display').innerHTML=`<div class="ratio-item"><div class="r-val r-actual">${payload.actualWait}</div><div class="r-label">Actual (min)</div></div><div class="ratio-item"><div class="r-val r-posted">${payload.postedWait}</div><div class="r-label">Posted (min)</div></div><div class="ratio-item"><div class="r-val r-ratio">${ratio}</div><div class="r-label">Ratio</div></div>`;
+      document.getElementById('success-msg').textContent=payload.attraction+' submitted!';
+      document.getElementById('log-idle').style.display='none';
+      document.getElementById('log-success').classList.add('visible');
+    }else{
+      document.getElementById('manual-form').style.display='none';
+      document.getElementById('manual-success').classList.add('visible');
+    }
+  }catch(err){
+    const errEl=document.getElementById(isLog?'log-error':'manual-error');
+    if(isLog)document.getElementById('log-idle').style.display='block';
+    errEl.textContent='Submission failed. Check your connection and try again.';
+    errEl.style.display='block';
+  }
+}
+
+async function submitManual(){
+  const name=document.getElementById('m-name').value;
+  const park=document.getElementById('m-park').value;
+  const attraction=document.getElementById('m-attraction').value;
+  const date=document.getElementById('m-date').value;
+  const time=document.getElementById('m-time').value;
+  const posted=document.getElementById('m-posted').value;
+  const actual=document.getElementById('m-actual').value;
+  const err=document.getElementById('manual-error');
+  if(!name||!park||!attraction||!date||!time||!posted||!actual){err.textContent='Please fill in all required fields.';err.style.display='block';return;}
+  err.style.display='none';
+  const btn=document.getElementById('manual-submit-btn');
+  btn.disabled=true;btn.textContent='Submitting…';
+  await submitToSheet({name,park,attraction,date,queueEntryTime:time,actualWait:parseInt(actual),postedWait:parseInt(posted),observationType:obsType.manual,notes:document.getElementById('m-notes').value||''},'manual');
+  btn.disabled=false;btn.textContent='Submit Entry';
+}
+
+function resetLogForm(){
+  ['name-select','park-select'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('attraction-select').innerHTML='<option value="">— select park first —</option>';
+  document.getElementById('posted-wait').value='';
+  document.getElementById('notes-field').value='';
+  obsType.log='Casual';
+  document.getElementById('obs-casual').classList.add('selected');
+  document.getElementById('obs-structured').classList.remove('selected');
+}
+
+function resetLog(){
+  document.getElementById('log-success').classList.remove('visible');
+  document.getElementById('log-idle').style.display='block';
+  resetLogForm();
+}
+
+function resetManual(){
+  document.getElementById('manual-success').classList.remove('visible');
+  document.getElementById('manual-form').style.display='block';
+  ['m-name','m-park','m-posted','m-actual','m-notes'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('m-attraction').innerHTML='<option value="">— select park first —</option>';
+  obsType.manual='Casual';
+  document.getElementById('m-obs-casual').classList.add('selected');
+  document.getElementById('m-obs-structured').classList.remove('selected');
+  const now=new Date();
+  document.getElementById('m-date').value=formatDate(now);
+  document.getElementById('m-time').value=formatTime(now);
+}
+
+async function loadDashboard(){
+  const btn=document.getElementById('refresh-btn');
+  btn.innerHTML='<span class="spinner"></span>Loading';
+  btn.disabled=true;
+  document.getElementById('dash-rides').innerHTML='<div class="loading-dash">Fetching data…</div>';
+  try{
+    const resp=await fetch(SCRIPT_URL+'?action=getData');
+    const json=await resp.json();
+    if(json.status==='success'){
+      allDashData=json.data.filter(r=>r.attraction&&Number(r.actualWait)>0&&Number(r.postedWait)>0);
+      renderDashboard();
+    }else{
+      document.getElementById('dash-rides').innerHTML='<div class="dash-empty">Could not load data from sheet.</div>';
+    }
+  }catch(e){
+    document.getElementById('dash-rides').innerHTML='<div class="dash-empty">Network error. Make sure you\'re connected and try again.</div>';
+  }
+  btn.innerHTML='↻ Refresh';btn.disabled=false;
+}
+
+function filterDash(park,el){
+  dashFilter=park;
+  document.querySelectorAll('.park-pill').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  renderDashboard();
+}
+
+function sortBy(type,el){
+  dashSort=type;
+  document.querySelectorAll('.sort-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  renderDashboard();
+}
+
+function renderDashboard(){
+  const filtered=dashFilter==='All'?allDashData:allDashData.filter(r=>r.park===dashFilter);
+  if(filtered.length===0){
+    ['d-total','d-ratio','d-avg-actual','d-avg-posted'].forEach(id=>document.getElementById(id).textContent='—');
+    document.getElementById('dash-rides').innerHTML='<div class="dash-empty">No observations yet'+(dashFilter!=='All'?' for '+dashFilter:'')+'.<br>Go log some rides!</div>';
+    return;
+  }
+  const n=filtered.length;
+  const avgRatio=(filtered.reduce((s,r)=>s+Number(r.actualWait)/Number(r.postedWait),0)/n).toFixed(2);
+  const avgActual=Math.round(filtered.reduce((s,r)=>s+Number(r.actualWait),0)/n);
+  const avgPosted=Math.round(filtered.reduce((s,r)=>s+Number(r.postedWait),0)/n);
+  document.getElementById('d-total').textContent=n;
+  document.getElementById('d-ratio').textContent=avgRatio;
+  document.getElementById('d-avg-actual').textContent=avgActual+'m';
+  document.getElementById('d-avg-posted').textContent=avgPosted+'m';
+
+  const byRide={};
+  filtered.forEach(r=>{
+    const k=r.attraction+'||'+r.park;
+    if(!byRide[k])byRide[k]={attraction:r.attraction,park:r.park,entries:[]};
+    byRide[k].entries.push(r);
+  });
+  let rides=Object.values(byRide).map(g=>{
+    const cnt=g.entries.length;
+    const avg=g.entries.reduce((s,r)=>s+Number(r.actualWait)/Number(r.postedWait),0)/cnt;
+    return{...g,count:cnt,avgRatio:avg};
+  });
+  if(dashSort==='rides')rides.sort((a,b)=>b.count-a.count);
+  else rides.sort((a,b)=>b.avgRatio-a.avgRatio);
+
+  document.getElementById('dash-rides').innerHTML=rides.map(r=>{
+    const rs=r.avgRatio.toFixed(2);
+    const rc=r.avgRatio<=0.9?'ratio-good':r.avgRatio<=1.1?'ratio-mid':'ratio-high';
+    return`<div class="ride-row"><div><div class="rr-name">${r.attraction}</div><div class="rr-park">${r.park}</div></div><div class="rr-stats"><div class="rr-ratio ${rc}">${rs}</div><div class="rr-count">${r.count} ride${r.count!==1?'s':''}</div></div></div>`;
+  }).join('');
+}
+
+window.addEventListener('load',()=>{
+  const now=new Date();
+  document.getElementById('m-date').value=formatDate(now);
+  document.getElementById('m-time').value=formatTime(now);
+  const pending=getPending();
+  if(pending)showRunningState(pending);
+  checkPendingBanner();
+});
+</script>
+</body>
+</html>
