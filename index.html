@@ -152,13 +152,6 @@
       <input type="number" id="posted-wait" placeholder="e.g. 45" min="0" max="300" inputmode="numeric">
     </div>
     <div class="field">
-      <label>Observation Type</label>
-      <div class="obs-toggle">
-        <button class="obs-btn selected" id="obs-casual" onclick="selectObs('Casual','obs-casual','obs-structured','log')">Casual</button>
-        <button class="obs-btn" id="obs-structured" onclick="selectObs('Structured','obs-casual','obs-structured','log')">Structured</button>
-      </div>
-    </div>
-    <div class="field">
       <label>Notes (optional)</label>
       <textarea id="notes-field" placeholder="e.g. Express Pass used, ride breakdown observed…"></textarea>
     </div>
@@ -220,13 +213,6 @@
     <div class="field-row">
       <div class="field"><label>Posted Wait (min)</label><input type="number" id="m-posted" placeholder="45" min="0" max="300" inputmode="numeric"></div>
       <div class="field"><label>Actual Wait (min)</label><input type="number" id="m-actual" placeholder="38" min="0" max="300" inputmode="numeric"></div>
-    </div>
-    <div class="field">
-      <label>Observation Type</label>
-      <div class="obs-toggle">
-        <button class="obs-btn selected" id="m-obs-casual" onclick="selectObs('Casual','m-obs-casual','m-obs-structured','manual')">Casual</button>
-        <button class="obs-btn" id="m-obs-structured" onclick="selectObs('Structured','m-obs-casual','m-obs-structured','manual')">Structured</button>
-      </div>
     </div>
     <div class="field">
       <label>Notes (optional)</label>
@@ -334,7 +320,7 @@ function startWait(){
   const err=document.getElementById('log-error');
   if(!name||!park||!attraction||!posted){err.textContent='Please fill in all required fields before starting.';err.style.display='block';return;}
   err.style.display='none';
-  const data={name,park,attraction,postedWait:parseInt(posted),observationType:obsType.log,notes:document.getElementById('notes-field').value,startTime:Date.now()};
+  const data={name,park,attraction,postedWait:parseInt(posted),observationType:"Casual",notes:document.getElementById('notes-field').value,startTime:Date.now()};
   savePending(data);
   showRunningState(data);
 }
@@ -409,7 +395,7 @@ async function submitManual(){
   err.style.display='none';
   const btn=document.getElementById('manual-submit-btn');
   btn.disabled=true;btn.textContent='Submitting…';
-  await submitToSheet({name,park,attraction,date,queueEntryTime:time,actualWait:parseInt(actual),postedWait:parseInt(posted),observationType:obsType.manual,notes:document.getElementById('m-notes').value||''},'manual');
+  await submitToSheet({name,park,attraction,date,queueEntryTime:time,actualWait:parseInt(actual),postedWait:parseInt(posted),observationType:"Casual",notes:document.getElementById('m-notes').value||''},'manual');
   btn.disabled=false;btn.textContent='Submit Entry';
 }
 
