@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Express Pair — Dickinson @ Universal</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@500&display=swap');
+  :root {
+    --bg:#0f1117;--surface:#1a1d27;--surface2:#22263a;
+    --border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.15);
+    --text:#f0f0f5;--muted:#8a8fa8;--accent:#4f9cf9;--accent2:#f9934f;
+    --success:#4fcf8a;--danger:#f94f4f;--express:#b47ff9;
+    --font:'DM Sans',sans-serif;--mono:'DM Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+  .header{background:var(--surface);border-bottom:1px solid var(--border);padding:16px 20px 14px;position:sticky;top:0;z-index:100}
+  .header-top{display:flex;align-items:center;justify-content:space-between}
+  .logo{font-size:13px;font-weight:600;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+  .logo span{color:var(--accent)}
+  .clock{font-family:var(--mono);font-size:14px;color:var(--muted);background:var(--bg);padding:4px 10px;border-radius:6px;border:1px solid var(--border)}
+
+  .page{padding:20px;display:none}
+  .page.active{display:block}
+
+  .setup-title{text-align:center;padding:20px 0 16px}
+  .setup-title h2{font-size:22px;font-weight:600;margin-bottom:6px}
+  .setup-title p{color:var(--muted);font-size:15px;line-height:1.5}
+
+  .field{margin-bottom:16px}
+  .field label{display:block;font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px}
+  .field select,.field input[type=number],.field textarea{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;font-family:var(--font);font-size:16px;color:var(--text);outline:none;appearance:none;-webkit-appearance:none;transition:border-color .15s}
+  .field select:focus,.field input:focus,.field textarea:focus{border-color:var(--accent)}
+  .field select option{background:#1a1d27}
+  .field textarea{resize:none;height:72px;line-height:1.5}
+
+  .section-head{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin:24px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+  .error-msg{background:rgba(249,79,79,.1);border:1px solid rgba(249,79,79,.3);border-radius:10px;padding:12px 14px;font-size:13px;color:var(--danger);margin-bottom:16px;display:none}
+
+  .big-btn{width:100%;padding:18px;border:none;border-radius:14px;font-family:var(--font);font-size:17px;font-weight:600;cursor:pointer;transition:all .15s;margin-top:4px}
+  .big-btn:active:not(:disabled){transform:scale(.97)}
+  .btn-go{background:var(--accent);color:#fff}
+  .btn-submit{background:var(--success);color:#0f1117}
+  .btn-submit:disabled{opacity:.4;cursor:not-allowed}
+  .btn-reset{background:var(--surface2);color:var(--muted);font-size:15px;padding:14px;margin-top:4px}
+
+  .ride-badge{display:inline-block;background:var(--surface2);border:1px solid var(--border2);border-radius:20px;padding:6px 14px;font-size:13px;color:var(--muted);margin-bottom:16px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .ride-badge strong{color:var(--text)}
+
+  .info-row{display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border-radius:10px;padding:10px 16px;margin-bottom:20px;gap:12px}
+  .info-item{text-align:center;flex:1}
+  .info-item .i-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+  .info-item .i-val{font-family:var(--mono);font-size:16px;color:var(--accent2);font-weight:500;margin-top:2px}
+  .info-divider{width:1px;background:var(--border);align-self:stretch}
+
+  .tracks{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+  .track{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px 12px;text-align:center;display:flex;flex-direction:column;gap:10px}
+  .track-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.1em}
+  .track-label.standby{color:var(--accent2)}
+  .track-label.express{color:var(--express)}
+  .track-timer{font-family:var(--mono);font-size:36px;font-weight:500;line-height:1;letter-spacing:-1px;transition:color .3s}
+  .track-timer.standby{color:var(--accent2)}
+  .track-timer.express{color:var(--express)}
+  .track-timer.done{color:var(--success)}
+  .track-status{font-size:11px;color:var(--muted);min-height:16px}
+
+  .track-btn{width:100%;padding:12px 8px;border:none;border-radius:10px;font-family:var(--font);font-size:13px;font-weight:600;cursor:pointer;transition:all .15s}
+  .track-btn:active:not(:disabled){transform:scale(.96)}
+  .track-btn:disabled{opacity:.32;cursor:not-allowed}
+
+  .enter-btn-sb{background:var(--accent2);border:1px solid var(--accent2);color:#0f1117}
+  .enter-btn-ep{background:var(--express);border:1px solid var(--express);color:#0f1117}
+  .enter-btn-done{background:var(--surface2);border:1px solid var(--border2);color:var(--muted)}
+
+  .exit-btn-off{background:var(--surface2);border:1px solid var(--border2);color:var(--muted)}
+  .exit-btn-sb{background:rgba(249,147,79,.15);border:1px solid var(--accent2);color:var(--accent2)}
+  .exit-btn-ep{background:rgba(180,127,249,.15);border:1px solid var(--express);color:var(--express)}
+
+  .success-screen{text-align:center;padding:40px 20px;display:none}
+  .success-screen.active{display:block}
+  .success-icon{width:72px;height:72px;border-radius:50%;background:rgba(79,207,138,.15);border:2px solid var(--success);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:32px}
+  .success-screen h2{font-size:22px;margin-bottom:8px}
+  .success-screen p{color:var(--muted);font-size:15px;margin-bottom:24px;line-height:1.5}
+
+  .result-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:24px}
+  .result-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;text-align:center}
+  .result-card .r-val{font-family:var(--mono);font-size:28px;font-weight:500;line-height:1}
+  .result-card .r-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-top:4px}
+  .r-standby{color:var(--accent2)}
+  .r-express{color:var(--express)}
+  .r-saved{color:var(--success)}
+  .r-ratio{color:var(--accent)}
+
+  .btn-new{background:var(--accent);color:#fff;width:100%;padding:18px;border:none;border-radius:14px;font-family:var(--font);font-size:17px;font-weight:600;cursor:pointer}
+  .spinner{display:inline-block;width:14px;height:14px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+  .pulsing{animation:pulse 1.2s infinite}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <div class="logo">Express <span>Pair</span></div>
+    <div class="clock" id="clock">--:--</div>
+  </div>
+</div>
+
+<!-- SETUP PAGE -->
+<div class="page active" id="page-setup">
+  <div class="setup-title">
+    <h2>New Observation</h2>
+    <p>Set up the ride, then time both lanes from the queue entrance.</p>
+  </div>
+
+  <div class="section-head">Observer &amp; Location</div>
+  <div class="field">
+    <label>Your Name</label>
+    <select id="s-name">
+      <option value="">— select name —</option>
+      <option>Trini</option><option>Quan</option><option>Châu</option>
+      <option>Claire</option><option>Norah</option><option>Daria</option>
+      <option>Carter</option><option>Kevin</option><option>Dick</option><option>Barry</option>
+    </select>
+  </div>
+  <div class="field">
+    <label>Park</label>
+    <select id="s-park" onchange="updateAttractions()">
+      <option value="">— select park —</option>
+      <option value="IOA">Islands of Adventure (IOA)</option>
+      <option value="USF">Universal Studios Florida (USF)</option>
+      <option value="Epic Universe">Epic Universe</option>
+    </select>
+  </div>
+  <div class="field">
+    <label>Attraction</label>
+    <select id="s-attraction"><option value="">— select park first —</option></select>
+  </div>
+
+  <div class="section-head">Session Details</div>
+  <div class="field">
+    <label>Posted Wait Time (minutes)</label>
+    <input type="number" id="s-posted" placeholder="e.g. 45" min="0" max="300" inputmode="numeric">
+  </div>
+
+  <div class="error-msg" id="setup-error"></div>
+  <button class="big-btn btn-go" onclick="startSession()">Start Session ▶</button>
+</div>
+
+<!-- TIMING PAGE -->
+<div class="page" id="page-timing">
+  <div style="text-align:center;margin-bottom:12px">
+    <div class="ride-badge"><strong id="t-park"></strong> — <span id="t-ride"></span></div>
+  </div>
+
+  <div class="info-row">
+    <div class="info-item">
+      <div class="i-label">Posted</div>
+      <div class="i-val" id="t-posted">--</div>
+    </div>
+    <div class="info-divider"></div>
+    <div class="info-item">
+      <div class="i-label">Started</div>
+      <div class="i-val" id="t-starttime">--:--</div>
+    </div>
+  </div>
+
+  <div class="tracks">
+    <!-- STANDBY TRACK -->
+    <div class="track">
+      <div class="track-label standby">Standby</div>
+      <div class="track-timer standby pulsing" id="sb-timer">--:--</div>
+      <div class="track-status" id="sb-status">Waiting to enter</div>
+      <button class="track-btn enter-btn-sb" id="sb-enter-btn" onclick="trackEnter('sb')">Entered Queue</button>
+      <button class="track-btn exit-btn-off" id="sb-exit-btn" onclick="trackExit('sb')" disabled>Exited Ride</button>
+    </div>
+
+    <!-- EXPRESS TRACK -->
+    <div class="track">
+      <div class="track-label express">Express</div>
+      <div class="track-timer express pulsing" id="ep-timer">--:--</div>
+      <div class="track-status" id="ep-status">Waiting to enter</div>
+      <button class="track-btn enter-btn-ep" id="ep-enter-btn" onclick="trackEnter('ep')">Entered Queue</button>
+      <button class="track-btn exit-btn-off" id="ep-exit-btn" onclick="trackExit('ep')" disabled>Exited Ride</button>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Notes (optional)</label>
+    <textarea id="t-notes" placeholder="Anything worth noting about conditions…"></textarea>
+  </div>
+
+  <div class="error-msg" id="timing-error"></div>
+  <button class="big-btn btn-submit" id="submit-btn" onclick="submitSession()" disabled>Submit Results</button>
+  <button class="big-btn btn-reset" onclick="cancelSession()">Cancel / Start Over</button>
+</div>
+
+<!-- SUCCESS PAGE -->
+<div class="success-screen" id="page-success">
+  <div class="success-icon">✓</div>
+  <h2>Logged!</h2>
+  <p id="success-msg">Observation submitted successfully.</p>
+  <div class="result-grid" id="final-results"></div>
+  <button class="btn-new" onclick="resetAll()">New Observation</button>
+</div>
+
+<script>
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxrjn6tpVS3DauJp9z6novCG_KYayihtd3QuCDqp12_fxPO3yTye8mr3reBAbPiOzI0/exec";
+
+const ATTRACTIONS = {
+  IOA: ["The Amazing Adventures of Spider-Man","Skull Island: Reign of Kong","The High in the Sky Seuss Trolley Train Ride!","The Cat in the Hat","Harry Potter and the Forbidden Journey","Hogwarts Express (IOA to USF)","Hagrid's Magical Creatures Motorbike Adventure","Jurassic World VelociCoaster","Jurassic Park River Adventure","Pteranodon Flyers","Flight of the Hippogriff","Popeye & Bluto's Bilge-Rat Barges","Dudley Do-Right's Ripsaw Falls","Doctor Doom's Fearfall","The Incredible Hulk Coaster"],
+  USF: ["Illumination's Villain-Con Minion Blast","Harry Potter and the Escape from Gringotts","Hogwarts Express (USF to IOA)","Transformers: The Ride-3D","Despicable Me: Minion Mayhem","MEN IN BLACK Alien Attack","E.T. Adventure","Hollywood Rip Ride Rockit","Race Through New York Starring Jimmy Fallon","Revenge of the Mummy","Fast & Furious: Supercharged","The Simpsons Ride"],
+  "Epic Universe": ["Stardust Racers","Constellation Carousel","Mario Kart: Bowser's Challenge","Mine-Cart Madness","Yoshi's Adventure","Monsters Unchained: The Frankenstein Experiment","Curse of the Werewolf","Harry Potter and the Battle at the Ministry","Le Cirque Arcanus","Hiccup's Wing Gliders","Dragon Racer's Rally","Fyre Drill"]
+};
+
+// Session state — plain object, no window[] references
+var session = null;
+var pairStartTime = null;
+var tracks = {
+  sb: { enterTime: null, exitTime: null, interval: null },
+  ep: { enterTime: null, exitTime: null, interval: null }
+};
+
+function updateClock() {
+  var n = new Date();
+  document.getElementById('clock').textContent =
+    n.getHours().toString().padStart(2,'0') + ':' + n.getMinutes().toString().padStart(2,'0');
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+function formatTime12(d) {
+  var h = d.getHours(), m = d.getMinutes().toString().padStart(2,'0');
+  var a = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  return h + ':' + m + ' ' + a;
+}
+
+function updateAttractions() {
+  var park = document.getElementById('s-park').value;
+  var sel = document.getElementById('s-attraction');
+  sel.innerHTML = '<option value="">— select attraction —</option>';
+  if (park && ATTRACTIONS[park]) {
+    ATTRACTIONS[park].forEach(function(a) {
+      var o = document.createElement('option');
+      o.value = a; o.textContent = a;
+      sel.appendChild(o);
+    });
+  }
+}
+
+function showPage(id) {
+  ['page-setup','page-timing','page-success'].forEach(function(pid) {
+    var el = document.getElementById(pid);
+    el.classList.remove('active');
+    el.style.display = 'none';
+  });
+  var target = document.getElementById(id);
+  target.style.display = 'block';
+  target.classList.add('active');
+}
+
+function startSession() {
+  var name = document.getElementById('s-name').value;
+  var park = document.getElementById('s-park').value;
+  var attraction = document.getElementById('s-attraction').value;
+  var posted = document.getElementById('s-posted').value;
+  var err = document.getElementById('setup-error');
+
+  if (!name || !park || !attraction || !posted) {
+    err.textContent = 'Please fill in all required fields before starting.';
+    err.style.display = 'block';
+    return;
+  }
+  err.style.display = 'none';
+
+  pairStartTime = new Date();
+  session = {
+    name: name,
+    park: park,
+    attraction: attraction,
+    postedWait: parseInt(posted)
+  };
+
+  // Reset tracks
+  tracks.sb = { enterTime: null, exitTime: null, interval: null };
+  tracks.ep = { enterTime: null, exitTime: null, interval: null };
+
+  // Update timing page header
+  document.getElementById('t-park').textContent = park;
+  document.getElementById('t-ride').textContent = attraction;
+  document.getElementById('t-posted').textContent = posted + ' min';
+  document.getElementById('t-starttime').textContent = formatTime12(pairStartTime);
+  document.getElementById('t-notes').value = '';
+  document.getElementById('timing-error').style.display = 'none';
+  document.getElementById('submit-btn').disabled = true;
+
+  // Reset track UI
+  resetTrackUI('sb');
+  resetTrackUI('ep');
+
+  showPage('page-timing');
+}
+
+function resetTrackUI(t) {
+  var timerEl = document.getElementById(t + '-timer');
+  timerEl.textContent = '--:--';
+  timerEl.className = 'track-timer ' + (t === 'sb' ? 'standby' : 'express') + ' pulsing';
+
+  document.getElementById(t + '-status').textContent = 'Waiting to enter';
+
+  var enterBtn = document.getElementById(t + '-enter-btn');
+  enterBtn.disabled = false;
+  enterBtn.className = 'track-btn ' + (t === 'sb' ? 'enter-btn-sb' : 'enter-btn-ep');
+
+  var exitBtn = document.getElementById(t + '-exit-btn');
+  exitBtn.disabled = true;
+  exitBtn.className = 'track-btn exit-btn-off';
+}
+
+function trackEnter(t) {
+  tracks[t].enterTime = Date.now();
+
+  // Grey out enter button
+  var enterBtn = document.getElementById(t + '-enter-btn');
+  enterBtn.disabled = true;
+  enterBtn.className = 'track-btn enter-btn-done';
+
+  // Activate exit button
+  var exitBtn = document.getElementById(t + '-exit-btn');
+  exitBtn.disabled = false;
+  exitBtn.className = 'track-btn ' + (t === 'sb' ? 'exit-btn-sb' : 'exit-btn-ep');
+
+  document.getElementById(t + '-status').textContent = 'In queue…';
+
+  // Start timer
+  var timerEl = document.getElementById(t + '-timer');
+  timerEl.className = 'track-timer ' + (t === 'sb' ? 'standby' : 'express') + ' pulsing';
+
+  tracks[t].interval = setInterval(function() {
+    var elapsed = Math.floor((Date.now() - tracks[t].enterTime) / 1000);
+    var m = Math.floor(elapsed / 60).toString().padStart(2, '0');
+    var s = (elapsed % 60).toString().padStart(2, '0');
+    timerEl.textContent = m + ':' + s;
+  }, 1000);
+}
+
+function trackExit(t) {
+  tracks[t].exitTime = Date.now();
+  clearInterval(tracks[t].interval);
+
+  var elapsed = Math.round((tracks[t].exitTime - tracks[t].enterTime) / 1000);
+  var m = Math.floor(elapsed / 60).toString().padStart(2,'0');
+  var s = (elapsed % 60).toString().padStart(2,'0');
+
+  var timerEl = document.getElementById(t + '-timer');
+  timerEl.className = 'track-timer done';
+  timerEl.textContent = m + ':' + s;
+
+  var exitBtn = document.getElementById(t + '-exit-btn');
+  exitBtn.disabled = true;
+  exitBtn.className = 'track-btn exit-btn-off';
+
+  var mins = Math.round(elapsed / 60);
+  document.getElementById(t + '-status').textContent = '✓ Done — ' + elapsed + 's (' + mins + ' min)';
+
+  // Enable submit only when both tracks are done
+  if (tracks.sb.exitTime && tracks.ep.exitTime) {
+    document.getElementById('submit-btn').disabled = false;
+  }
+}
+
+async function submitSession() {
+  var sbWait = Math.round((tracks.sb.exitTime - tracks.sb.enterTime) / 1000);
+  var epWait = Math.round((tracks.ep.exitTime - tracks.ep.enterTime) / 1000);
+  var saved = sbWait - epWait;
+  var ratio = epWait > 0 ? (sbWait / epWait).toFixed(2) : 'N/A';
+
+  var payload = {
+    pairStartTime: formatTime12(pairStartTime),
+    observer: session.name,
+    park: session.park,
+    attraction: session.attraction,
+    postedWait: session.postedWait,
+    standbyWait: sbWait,
+    expressWait: epWait,
+    timeSaved: saved,
+    ratio: ratio,
+    notes: document.getElementById('t-notes').value || ''
+  };
+
+  var btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Submitting…';
+
+  try {
+    await fetch(SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    document.getElementById('success-msg').textContent = session.attraction + ' submitted!';
+    document.getElementById('final-results').innerHTML =
+      '<div class="result-card"><div class="r-val r-standby">' + sbWait + '</div><div class="r-label">Standby (sec)</div></div>' +
+      '<div class="result-card"><div class="r-val r-express">' + epWait + '</div><div class="r-label">Express (sec)</div></div>' +
+      '<div class="result-card"><div class="r-val r-saved">' + saved + '</div><div class="r-label">Seconds Saved</div></div>' +
+      '<div class="result-card"><div class="r-val r-ratio">' + ratio + '×</div><div class="r-label">Standby/Express</div></div>';
+
+    document.getElementById('page-success').style.display = 'block';
+    document.getElementById('page-success').classList.add('active');
+    document.getElementById('page-timing').style.display = 'none';
+    document.getElementById('page-timing').classList.remove('active');
+
+  } catch(err) {
+    var errEl = document.getElementById('timing-error');
+    errEl.textContent = 'Submission failed. Check your connection and try again.';
+    errEl.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Submit Results';
+  }
+}
+
+function cancelSession() {
+  clearInterval(tracks.sb.interval);
+  clearInterval(tracks.ep.interval);
+  showPage('page-setup');
+}
+
+function resetAll() {
+  clearInterval(tracks.sb.interval);
+  clearInterval(tracks.ep.interval);
+  document.getElementById('s-name').value = '';
+  document.getElementById('s-park').value = '';
+  document.getElementById('s-attraction').innerHTML = '<option value="">— select park first —</option>';
+  document.getElementById('s-posted').value = '';
+  document.getElementById('setup-error').style.display = 'none';
+  showPage('page-setup');
+}
+
+// Init
+showPage('page-setup');
+</script>
+</body>
+</html>
